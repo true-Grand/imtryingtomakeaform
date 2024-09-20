@@ -1,16 +1,15 @@
 "use client";
-
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 
 export default function Home() {
-  const [userReflection, setUserReflection] = useState<string>('');
-  const [quizResult, setQuizResult] = useState<string>('');
+  const [userReflection, setUserReflection] = useState('');
+  const [quizResult, setQuizResult] = useState('');
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const resultCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
-    // Start the video stream for the camera
+  // Start the video stream for the camera
+  const startVideoStream = () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then((stream) => {
@@ -22,16 +21,9 @@ export default function Home() {
           console.log('Error accessing camera: ', err);
         });
     }
-  }, []);
-
-  const submitReflection = () => {
-    if (userReflection === '') {
-      alert('Please enter your reflection.');
-    } else {
-      alert('Reflection saved! Now proceed to the quiz.');
-    }
   };
 
+  // Capture the photo from the video stream
   const capturePhoto = () => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -39,10 +31,12 @@ export default function Home() {
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, 320, 240);
+        setCapturedImage(canvas.toDataURL('image/png'));
       }
     }
   };
 
+  // Handle quiz submission
   const submitQuiz = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -61,108 +55,104 @@ export default function Home() {
     }
 
     setQuizResult(result);
-    applyEffectToImage(result);
-  };
-
-  const applyEffectToImage = (effect: string) => {
-    const canvas = canvasRef.current;
-    const resultCanvas = resultCanvasRef.current;
-    if (canvas && resultCanvas) {
-      const resultContext = resultCanvas.getContext('2d');
-      if (resultContext) {
-        const symbol = new Image();
-        // Load the correct symbol based on personality type
-        if (effect.includes('Investigative')) {
-          symbol.src = '/images/investigative.png';
-        } else if (effect.includes('Artistic')) {
-          symbol.src = '/images/artistic.png';
-        } else if (effect.includes('Realistic')) {
-          symbol.src = '/images/realistic.png';
-        } else if (effect.includes('Enterprising')) {
-          symbol.src = '/images/enterprising.png';
-        } else if (effect.includes('Social')) {
-          symbol.src = '/images/social.png';
-        } else if (effect.includes('Conventional')) {
-          symbol.src = '/images/conventional.png';
-        }
-
-        // Draw the captured image onto the result canvas
-        resultContext.drawImage(canvas, 0, 0, 320, 240);
-
-        // Draw the symbol onto the canvas once it's loaded
-        symbol.onload = () => {
-          resultContext.drawImage(symbol, 200, 50, 100, 100);
-        };
-
-        // Add the user's reflection and personality type as a text overlay
-        resultContext.font = '16px Arial';
-        resultContext.fillStyle = 'white';
-        resultContext.fillText(`Reflection: ${userReflection}`, 10, 220);
-        resultContext.fillText(`Personality: ${effect}`, 10, 240);
-      }
-    }
-  };
-
-  const downloadImage = () => {
-    const resultCanvas = resultCanvasRef.current;
-    if (resultCanvas) {
-      const link = document.createElement('a');
-      link.download = 'final_image.png';
-      link.href = resultCanvas.toDataURL();
-      link.click();
-    }
   };
 
   return (
-    <div>
-      <h1>Reflection and Personality App with Camera</h1>
+    <div className="flex flex-col items-center min-h-screen p-8 bg-gray-100">
+      <main className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl space-y-8">
+        
+        {/* Reflection Section */}
+        <form onSubmit={submitQuiz} className="space-y-6">
+          <div className="flex flex-col space-y-2">
+            <label htmlFor="reflection" className="text-lg font-medium text-gray-700">
+              Reflection on 1 Samuel 6-13
+            </label>
+            <textarea
+              id="reflection"
+              rows={4}
+              placeholder="Write your reflection here..."
+              value={userReflection}
+              onChange={(e) => setUserReflection(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-      {/* Reflection Section */}
-      <div>
-        <h2>Reflection on 1 Samuel 6-13</h2>
-        <textarea
-          rows={5}
-          cols={50}
-          placeholder="Write your reflection here..."
-          value={userReflection}
-          onChange={(e) => setUserReflection(e.target.value)}
-        />
-        <br />
-        <button onClick={submitReflection}>Submit Reflection</button>
-      </div>
+          {/* Camera Section */}
+          <div className="flex flex-col items-center space-y-4">
+            <h3 className="text-lg font-medium text-gray-700">Capture Your Photo</h3>
+            <video ref={videoRef} autoPlay className="w-80 h-60 border border-gray-300 rounded-lg" />
+            <button
+              type="button"
+              onClick={startVideoStream}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Start Camera
+            </button>
+            <button
+              type="button"
+              onClick={capturePhoto}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Capture Photo
+            </button>
 
-      {/* Camera Section */}
-      <div>
-        <h2>Take a Picture</h2>
-        <video ref={videoRef} autoPlay width="320" height="240"></video>
-        <br />
-        <button onClick={capturePhoto}>Capture Photo</button>
-        <canvas ref={canvasRef} width="320" height="240" style={{ display: 'none' }}></canvas>
-      </div>
+            <canvas ref={canvasRef} width="320" height="240" className="hidden"></canvas>
+            {capturedImage && (
+              <img src={capturedImage} alt="Captured" className="w-80 h-60 border border-gray-300 rounded-lg" />
+            )}
+          </div>
 
-      {/* Quiz Section */}
-      <div>
-        <h2>Identify Your Personality Type</h2>
-        <form onSubmit={submitQuiz}>
-          <label>Do you prefer working with ideas?</label><br />
-          <input type="radio" name="q1" value="Investigative" /> Yes<br />
-          <input type="radio" name="q1" value="Realistic" /> No<br /><br />
+          {/* Quiz Section */}
+          <div className="flex flex-col space-y-4">
+            <h3 className="text-lg font-medium text-gray-700">Personality Quiz</h3>
 
-          <label>Do you enjoy creative activities?</label><br />
-          <input type="radio" name="q2" value="Artistic" /> Yes<br />
-          <input type="radio" name="q2" value="Conventional" /> No<br /><br />
+            <div className="flex flex-col space-y-2">
+              <label className="text-gray-600">Do you prefer working with ideas?</label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input type="radio" name="q1" value="Investigative" className="form-radio h-5 w-5 text-blue-600" />
+                  <span>Yes</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input type="radio" name="q1" value="Realistic" className="form-radio h-5 w-5 text-blue-600" />
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
 
-          <button type="submit">Submit Quiz</button>
+            <div className="flex flex-col space-y-2">
+              <label className="text-gray-600">Do you enjoy creative activities?</label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input type="radio" name="q2" value="Artistic" className="form-radio h-5 w-5 text-blue-600" />
+                  <span>Yes</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input type="radio" name="q2" value="Conventional" className="form-radio h-5 w-5 text-blue-600" />
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Submit Reflection & Quiz
+            </button>
+          </div>
         </form>
-      </div>
 
-      {/* Result Section */}
-      <div>
-        <h2>Your Character Image</h2>
-        <canvas ref={resultCanvasRef} width="320" height="240"></canvas>
-        <br />
-        <button onClick={downloadImage}>Download Image</button>
-      </div>
+        {/* Quiz Result Display */}
+        {quizResult && (
+          <div className="mt-8 p-4 bg-blue-100 text-blue-900 rounded-lg">
+            <h3 className="text-lg font-medium">Your Personality Type</h3>
+            <p>{quizResult}</p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
