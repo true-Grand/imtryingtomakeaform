@@ -1,101 +1,168 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef, FormEvent } from 'react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [userReflection, setUserReflection] = useState<string>('');
+  const [quizResult, setQuizResult] = useState<string>('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const resultCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  useEffect(() => {
+    // Start the video stream for the camera
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch((err) => {
+          console.log('Error accessing camera: ', err);
+        });
+    }
+  }, []);
+
+  const submitReflection = () => {
+    if (userReflection === '') {
+      alert('Please enter your reflection.');
+    } else {
+      alert('Reflection saved! Now proceed to the quiz.');
+    }
+  };
+
+  const capturePhoto = () => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (canvas && video) {
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, 320, 240);
+      }
+    }
+  };
+
+  const submitQuiz = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    let result = '';
+
+    if (formData.get('q1') === 'Investigative') {
+      result = 'Investigative';
+    } else if (formData.get('q1') === 'Realistic') {
+      result = 'Realistic';
+    }
+
+    if (formData.get('q2') === 'Artistic') {
+      result = result ? result + ' & Artistic' : 'Artistic';
+    } else if (formData.get('q2') === 'Conventional') {
+      result = result ? result + ' & Conventional' : 'Conventional';
+    }
+
+    setQuizResult(result);
+    applyEffectToImage(result);
+  };
+
+  const applyEffectToImage = (effect: string) => {
+    const canvas = canvasRef.current;
+    const resultCanvas = resultCanvasRef.current;
+    if (canvas && resultCanvas) {
+      const resultContext = resultCanvas.getContext('2d');
+      if (resultContext) {
+        const symbol = new Image();
+        // Load the correct symbol based on personality type
+        if (effect.includes('Investigative')) {
+          symbol.src = '/images/investigative.png';
+        } else if (effect.includes('Artistic')) {
+          symbol.src = '/images/artistic.png';
+        } else if (effect.includes('Realistic')) {
+          symbol.src = '/images/realistic.png';
+        } else if (effect.includes('Enterprising')) {
+          symbol.src = '/images/enterprising.png';
+        } else if (effect.includes('Social')) {
+          symbol.src = '/images/social.png';
+        } else if (effect.includes('Conventional')) {
+          symbol.src = '/images/conventional.png';
+        }
+
+        // Draw the captured image onto the result canvas
+        resultContext.drawImage(canvas, 0, 0, 320, 240);
+
+        // Draw the symbol onto the canvas once it's loaded
+        symbol.onload = () => {
+          resultContext.drawImage(symbol, 200, 50, 100, 100);
+        };
+
+        // Add the user's reflection and personality type as a text overlay
+        resultContext.font = '16px Arial';
+        resultContext.fillStyle = 'white';
+        resultContext.fillText(`Reflection: ${userReflection}`, 10, 220);
+        resultContext.fillText(`Personality: ${effect}`, 10, 240);
+      }
+    }
+  };
+
+  const downloadImage = () => {
+    const resultCanvas = resultCanvasRef.current;
+    if (resultCanvas) {
+      const link = document.createElement('a');
+      link.download = 'final_image.png';
+      link.href = resultCanvas.toDataURL();
+      link.click();
+    }
+  };
+
+  return (
+    <div>
+      <h1>Reflection and Personality App with Camera</h1>
+
+      {/* Reflection Section */}
+      <div>
+        <h2>Reflection on 1 Samuel 6-13</h2>
+        <textarea
+          rows={5}
+          cols={50}
+          placeholder="Write your reflection here..."
+          value={userReflection}
+          onChange={(e) => setUserReflection(e.target.value)}
+        />
+        <br />
+        <button onClick={submitReflection}>Submit Reflection</button>
+      </div>
+
+      {/* Camera Section */}
+      <div>
+        <h2>Take a Picture</h2>
+        <video ref={videoRef} autoPlay width="320" height="240"></video>
+        <br />
+        <button onClick={capturePhoto}>Capture Photo</button>
+        <canvas ref={canvasRef} width="320" height="240" style={{ display: 'none' }}></canvas>
+      </div>
+
+      {/* Quiz Section */}
+      <div>
+        <h2>Identify Your Personality Type</h2>
+        <form onSubmit={submitQuiz}>
+          <label>Do you prefer working with ideas?</label><br />
+          <input type="radio" name="q1" value="Investigative" /> Yes<br />
+          <input type="radio" name="q1" value="Realistic" /> No<br /><br />
+
+          <label>Do you enjoy creative activities?</label><br />
+          <input type="radio" name="q2" value="Artistic" /> Yes<br />
+          <input type="radio" name="q2" value="Conventional" /> No<br /><br />
+
+          <button type="submit">Submit Quiz</button>
+        </form>
+      </div>
+
+      {/* Result Section */}
+      <div>
+        <h2>Your Character Image</h2>
+        <canvas ref={resultCanvasRef} width="320" height="240"></canvas>
+        <br />
+        <button onClick={downloadImage}>Download Image</button>
+      </div>
     </div>
   );
 }
