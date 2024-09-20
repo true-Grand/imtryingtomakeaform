@@ -11,6 +11,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Start the camera stream
   useEffect(() => {
     if (showCamera) {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -73,9 +74,9 @@ export default function Home() {
       setSymbolImage('/image/conventional.png');
     }
 
-    setQuizResult(result); // Set the final quiz result text
+    setQuizResult(result);
 
-    // Save the result to a text file by calling the API
+    // Save the result to Supabase via API route
     try {
       const response = await fetch('/api/saveResults', {
         method: 'POST',
@@ -88,7 +89,7 @@ export default function Home() {
           capturedImageURL: capturedImage, // Base64 image URL
         }),
       });
-  
+
       if (response.ok) {
         alert('Results saved successfully!');
       } else {

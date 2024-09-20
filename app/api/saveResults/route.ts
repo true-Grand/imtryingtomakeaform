@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { supabase } from '../../../lib/supabaseClient'; // Assuming you have Supabase client set up here
 
 export async function POST(req: NextRequest) {
   try {
     const { reflection, quizResult, capturedImageURL } = await req.json();
 
-    // Construct the text to be written
-    const textToSave = `Reflection: ${reflection}\nQuiz Result: ${quizResult}\nCaptured Image: ${capturedImageURL}\n\n`;
+    // Insert the data into the Supabase table 'quiz_results'
+    const { data, error } = await supabase.from('quiz_results').insert([
+      {
+        reflection: reflection,
+        quiz_result: quizResult,
+        captured_image_url: capturedImageURL || null, // Optional
+      },
+    ]);
 
-    // Define the file path (use a folder for storing data)
-    const filePath = path.join(process.cwd(), 'data', 'results.txt');
+    if (error) {
+      console.error('Error saving results to Supabase:', error);
+      return NextResponse.json({ message: 'Error saving results', error }, { status: 500 });
+    }
 
-    // Append the data to the file
-    fs.appendFileSync(filePath, textToSave, 'utf8');
-
-    return NextResponse.json({ message: 'Results saved successfully!' });
+    return NextResponse.json({ message: 'Results saved successfully!', data });
   } catch (error) {
-    return NextResponse.json({ message: 'Error saving results', error }, { status: 500 });
+    console.error('Error processing request:', error);
+    return NextResponse.json({ message: 'Error processing request', error }, { status: 500 });
   }
 }
